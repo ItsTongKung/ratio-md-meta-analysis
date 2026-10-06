@@ -1,0 +1,145 @@
+# =============================================================================
+# Simulation design (documentation/configuration)
+#
+# This file documents, in human-readable form, the final simulation design of
+# the study "Finite-Sample Operating Characteristics and Estimand
+# Characterization of a Ratio-Estimation Procedure for Mean-Difference
+# Meta-Analysis". It is documentation of the design AS EXECUTED; the binding
+# computational definitions live in code/methods.py. Nothing in this file is
+# read by the pipeline; it must not be used as the source of new assumptions.
+# =============================================================================
+
+study:
+  procedures: [P1, P2, P3, P4, C1, C2, C3]      # see docs/METHODS.md
+  nominal_coverage: 0.95
+  two_sided_alpha: 0.05
+
+# ---------------------------------------------------------------- targets ----
+# Three population targets per cell (Delta = true mean difference):
+#   T2   study-size-weighted superpopulation estimand E[N*Theta]/E[N]
+#   T3   superpopulation mean of study-level effects E[Theta]
+#   T_DL probability limit of the inverse-variance (DL/HKSJ) center
+# Closed forms were derived per data-generating mechanism and established
+# before execution; provenance files:
+#   results/targets/exact_targets.json       (law constants: T2 - T3, moments)
+#   results/targets/comparator_targets.json  (T_DL - Delta per family/scenario)
+#   results/targets/d4_targets.json          (D4 comparator target by MC;
+#        regenerable with: python code/compute_targets.py)
+# For the D4 (patient-level) family, T_DL - Delta was computed by Monte Carlo
+# under the general C2 form: tau2* = 0.25901, T_DL - Delta = 0.00015183 (the
+# committed run-1 value used downstream; MCSE 0.00020 at 2e7 studies, two
+# independent passes).
+
+# ------------------------------------------------------------ scenarios ------
+# Effect-law scenarios (tau = heterogeneity SD, gamma = size-effect slope).
+# Each law uses one standard-normal latent variable per study: the effects
+# are actual-centered, Theta = Delta + gamma*(N - E[N])/SD(N) + tau*Z with
+# Z ~ N(0,1) independent of (N, q) and of the other per-study draws (all
+# study-level components are drawn in sequence from one stream). The
+# heterogeneity term tau*Z is N(0, tau^2), which the manuscript writes as
+# the random effect u.
+scenarios:
+  S1: {tau: 0.0, gamma: 0.0, informative_size: no,  description: common effect}
+  S2: {tau: 0.5, gamma: 0.0, informative_size: no,  description: moderate heterogeneity}
+  S3: {tau: 0.5, gamma: 0.1, informative_size: yes, description: moderate heterogeneity + informative study size}
+  S4: {tau: 1.0, gamma: 0.0, informative_size: no,  description: strong heterogeneity}
+  S5: {tau: 1.0, gamma: 0.1, informative_size: yes, description: strong heterogeneity + informative study size}
+
+delta_values: [0.0, 0.5]
+
+# ------------------------------------------------------- data-generating mechanisms ----
+# Study size: N = max(clamp, round(exp(mu0 + sigma0*Z))), Z standard normal.
+# Allocation: treatment fraction q in {1/3, 1/2, 2/3} (see families below);
+# nT = round(q*N), nC = N - nT. Within-study variance s2p = chi2_{N-2}/(N-2).
+laws:
+  primary: {mu0: 3.0, sigma0: 0.75, clamp: 10.0}
+  D2:      {mu0: 3.0, sigma0: 0.5,  clamp: 10.0}   # study-size sensitivity
+  clamp5:  {mu0: 3.0, sigma0: 0.75, clamp: 5.0}    # clamp sensitivity
+
+# Cell families (152 cells total):
+#   core   5 scenarios x 2 deltas x M in {3,5,10,30,100,300}, R=100,000 (60 cells)
+#          corrected-normal DGM: arm means normal, independent of s2p
+#   D1     5 x 2 x M in {3,5,10,30,100}, R=20,000 (50 cells)
+#          variance-coupled normal scale mixture (original scheme):
+#          arm means normal with variance s2p*c
+#   D2     S1,S3 x 2 deltas x M in {5,10,30}, R=20,000 (12 cells); study-size law sigma0=0.5
+#   D3     S1,S3 x 2 deltas x M in {5,10,30}, R=20,000 (12 cells);
+#          allocation distribution P(q=1/3)=0.6, P(q=2/3)=0.4
+#   D4     S2 x 2 deltas x M in {5,10,30}, R=20,000 (6 cells);
+#          patient-level DGM: standardized-lognormal patient outcomes
+#          (control arm block, then treatment arm block); s2p and arm means
+#          realized from the patient data
+#   clamp5 S1,S3 x 2 deltas x M in {5,10,30}, R=20,000 (12 cells); clamp 5
+families: [core, D1, D2, D3, D4, clamp5]
+n_cells: 152
+base_replications: {core: 100000, sensitivity: 20000}
+
+# ------------------------------------------------- classification (analysis) ----
+coverage_tolerance_band: [0.92, 0.98]   # prespecified coverage tolerance band around nominal 0.95
+classification_rule: >
+  Coverage for T2 inside [0.92, 0.98] is labeled WITHIN. Outside the band,
+  the departure is labeled OUTSIDE if its distance to the violated boundary
+  exceeds 3 MCSEs at the executed R, and BOUNDARY otherwise (i.e., the
+  estimate lies outside 0.92/0.98 but within three MCSEs of the boundary).
+  These labels are data values in the archived analysis files. This is an
+  operational Monte Carlo classification at the executed replication count,
+  not a hypothesis test.
+
+# ------------------------------------- boundary-precision boost (as executed) ----
+# The boost rule (trigger and plug-in form) was fixed before the boost pass:
+# cells whose coverage for T2 lay outside the band but within 3 MCSEs of the
+# violated boundary were re-executed with more replications so that the
+# classification becomes decidable ("3*MCSE < d"). Boost sizes used the
+# rule's stated plug-in form 9*q_hat*(1-q_hat)/d^2 with the observed
+# worst-boundary q(1-q) from the base run; this refinement of the plug-in
+# input did not change the scientific 0.92/0.98 classification boundary.
+# Sizes were capped at 1,000,000 and floored at the cell's base R. The same
+# seed stream is continued: the first R_base replications are bit-identical
+# and the boost extends the stream. 32 cells were boosted (total additional
+# unique replications beyond base: 8,363,932; final unique total: 16,203,932).
+r_boost:
+  trigger: coverage outside [0.92, 0.98] and within 3*MCSE of the violated boundary
+  formula: >
+    R_boost = 9 * q_hat*(1-q_hat) / d^2, where d is the distance of the
+    worst-boundary pair (the cell's coverage relative to its estimand) to
+    the violated band boundary and q_hat its coverage. The rule fixed the
+    trigger and the plug-in form before the boost pass; the plug-in was
+    applied with the observed worst-boundary q_hat*(1-q_hat) from the base
+    run, as the rule stated (its intent: the classification becomes
+    decidable, "3*MCSE < d"). Capped at 1,000,000 and floored at the cell's
+    base R. This refinement did not change the classification boundary.
+  cap: 1000000
+  floor: base R of the cell
+  boosted_cells:
+    - {cell: D1_S2_d1_M10,    M: 10, R_base: 20000,  R_boost: 78670}
+    - {cell: D1_S2_d2_M10,    M: 10, R_base: 20000,  R_boost: 87181}
+    - {cell: D1_S2_d2_M5,     M: 5,  R_base: 20000,  R_boost: 320259}
+    - {cell: D1_S3_d1_M10,    M: 10, R_base: 20000,  R_boost: 43282}
+    - {cell: D1_S3_d2_M10,    M: 10, R_base: 20000,  R_boost: 22464}
+    - {cell: D1_S3_d2_M5,     M: 5,  R_base: 20000,  R_boost: 46644}
+    - {cell: D1_S4_d1_M10,    M: 10, R_base: 20000,  R_boost: 59516}
+    - {cell: D1_S4_d2_M10,    M: 10, R_base: 20000,  R_boost: 233643}
+    - {cell: D1_S4_d2_M3,     M: 3,  R_base: 20000,  R_boost: 1000000}
+    - {cell: D1_S4_d2_M5,     M: 5,  R_base: 20000,  R_boost: 27016}
+    - {cell: D1_S5_d1_M10,    M: 10, R_base: 20000,  R_boost: 73677}
+    - {cell: D1_S5_d2_M10,    M: 10, R_base: 20000,  R_boost: 24999}
+    - {cell: D2_S1_d2_M10,    M: 10, R_base: 20000,  R_boost: 1000000}
+    - {cell: D2_S3_d1_M10,    M: 10, R_base: 20000,  R_boost: 32252}
+    - {cell: D2_S3_d2_M10,    M: 10, R_base: 20000,  R_boost: 90331}
+    - {cell: D3_S3_d1_M10,    M: 10, R_base: 20000,  R_boost: 22464}
+    - {cell: D3_S3_d1_M5,     M: 5,  R_base: 20000,  R_boost: 20639}
+    - {cell: D3_S3_d2_M10,    M: 10, R_base: 20000,  R_boost: 37574}
+    - {cell: D3_S3_d2_M5,     M: 5,  R_base: 20000,  R_boost: 25942}
+    - {cell: D4_S2_d1_M10,    M: 10, R_base: 20000,  R_boost: 81362}
+    - {cell: D4_S2_d1_M5,     M: 5,  R_base: 20000,  R_boost: 134196}
+    - {cell: D4_S2_d2_M10,    M: 10, R_base: 20000,  R_boost: 42242}
+    - {cell: D4_S2_d2_M5,     M: 5,  R_base: 20000,  R_boost: 263467}
+    - {cell: clamp5_S1_d1_M10, M: 10, R_base: 20000, R_boost: 1000000}
+    - {cell: clamp5_S3_d1_M10, M: 10, R_base: 20000, R_boost: 220605}
+    - {cell: clamp5_S3_d2_M10, M: 10, R_base: 20000, R_boost: 299432}
+    - {cell: core_S2_d1_M5,   M: 5,  R_base: 100000, R_boost: 159755}
+    - {cell: core_S2_d2_M10,  M: 10, R_base: 100000, R_boost: 416633}
+    - {cell: core_S2_d2_M5,   M: 5,  R_base: 100000, R_boost: 619687}
+    - {cell: core_S3_d2_M10,  M: 10, R_base: 100000, R_boost: 1000000}
+    - {cell: core_S5_d1_M10,  M: 10, R_base: 100000, R_boost: 1000000}
+    - {cell: core_S5_d2_M10,  M: 10, R_base: 100000, R_boost: 1000000}

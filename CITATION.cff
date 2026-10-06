@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software or these results, please cite the work using the
+  metadata below. A persistent repository identifier (DOI) has not yet been
+  assigned; the `doi` field will be filled in after archival release.
+  `version` 1.0.0 is the intended first-release version; `date-released`
+  will be set to the actual release date when the first public release is
+  tagged.
+title: >-
+  Finite-Sample Operating Characteristics and Estimand Characterization of a
+  Ratio-Estimation Procedure for Mean-Difference Meta-Analysis
+authors:
+  - family-names: Sriwicha
+    given-names: Phongsakon
+    orcid: "https://orcid.org/0009-0001-0561-1076"
+    affiliation: >-
+      Department of Computer Engineering, Faculty of Engineering,
+      King Mongkut's University of Technology Thonburi, Bangkok, Thailand
+version: 1.0.0
+keywords:
+  - meta-analysis
+  - mean difference
+  - ratio estimation
+  - finite-sample inference
+  - estimands
+  - simulation
+  - random effects
+abstract: >-
+  Reproducibility repository for a simulation study of the finite-sample
+  operating characteristics of a published ratio-estimation interval
+  procedure for mean-difference meta-analysis, with three prespecified
+  variants and three comparator procedures, evaluated on 152 simulation
+  cells over three population targets. Contains simulation code, the
+  deterministic seed specification, target calculations, archived per-cell
+  results, the analysis pipeline, and table/figure generation code.

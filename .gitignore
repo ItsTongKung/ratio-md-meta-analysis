@@ -1,0 +1,22 @@
+# Generated outputs (article tables and figures are regenerated on demand
+# by code/make_tables.py and code/make_figures.py; never version-controlled).
+outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local scratch and logs (never part of the archived results)
+*.log
+*.tmp
+_tmp/
+scratch/
