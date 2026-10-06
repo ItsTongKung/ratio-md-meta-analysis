@@ -1,11 +1,9 @@
 cff-version: 1.2.0
 message: >-
   If you use this software or these results, please cite the work using the
-  metadata below. A persistent repository identifier (DOI) has not yet been
-  assigned; the `doi` field will be filled in after archival release.
-  `version` 1.0.0 is the intended first-release version; `date-released`
-  will be set to the actual release date when the first public release is
-  tagged.
+  metadata below. The metadata corresponds to release v1.0.0 of this
+  repository, which is archived on Zenodo (version DOI
+  10.5281/zenodo.23193253; concept DOI 10.5281/zenodo.23193252).
 title: >-
   Finite-Sample Operating Characteristics and Estimand Characterization of a
   Ratio-Estimation Procedure for Mean-Difference Meta-Analysis
@@ -17,6 +15,8 @@ authors:
       Department of Computer Engineering, Faculty of Engineering,
       King Mongkut's University of Technology Thonburi, Bangkok, Thailand
 version: 1.0.0
+doi: "10.5281/zenodo.23193253"
+date-released: "2026-10-06"
 keywords:
   - meta-analysis
   - mean difference

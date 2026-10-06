@@ -180,9 +180,11 @@ cite the article and the repository version.
 
 ## DOI
 
-Repository DOI: pending. A persistent identifier will be added after
-archival release; this section and `CITATION.cff` will be updated then.
-No placeholder DOI is used.
+Version 1.0.0 is archived on Zenodo:
+
+**https://doi.org/10.5281/zenodo.23193253**
+
+Zenodo record: https://zenodo.org/records/23193253
 
 ## Contact
 
